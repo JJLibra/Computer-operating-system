@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stdarg.h>
 
 #define T 1
 
@@ -29,17 +30,90 @@ Process *Finish = NULL; // 已完成
 int time = 0;
 int Maxsize = 4;
 
+//输出颜色字体
+void color_printf(const char* color_code, const char* format, ...) {
+    va_list args;
+    printf("%s", color_code); // 设置颜色
+    va_start(args, format);
+    vprintf(format, args); // 打印格式化的文本
+    va_end(args);
+    printf("\033[0m"); // 重置到默认颜色
+}
+void red_printf(const char* format, ...) {
+    va_list args;
+    printf("\033[31m");
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    printf("\033[0m");
+}
+void blue_printf(const char* format, ...)
+{
+    va_list args;
+    printf("\033[1;34m");
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    printf("\033[0m");
+}
+void green_printf(const char* format, ...) 
+{
+    va_list args;
+    printf("\033[32m");
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    printf("\033[0m");
+}
+void darkgreen_printf(const char* format, ...) 
+{
+    va_list args;
+    printf("\033[36m");
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    printf("\033[0m");
+}
+void yellow_printf(const char* format, ...) 
+{
+    va_list args;
+    printf("\033[33m");
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    printf("\033[0m");
+}
+void purple_printf(const char* format, ...) 
+{
+    va_list args;
+    printf("\033[35m");
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    printf("\033[0m");
+}
 // 初始化队列
 void InitQueue()
 {
-	printf("选择队列级数：");
+	yellow_printf("Welcome!\n");
+	yellow_printf("Number of queue progressions:\n");
 	scanf("%d", &Maxsize);
 	Queue *temp;
+	int count = 1;
 	for (int i = 0; i < Maxsize; i++)
 	{
 		temp = (Queue *)malloc(sizeof(Queue));
 		temp->front = NULL;
-		temp->TimeSlice = pow(2, i) * T; // 设置各级队列时间片，当前时间片T，2T，4T，8T...
+		if(i==0)
+		{
+			temp->TimeSlice=T;
+			count *= 2;
+		}
+		else
+		{
+			temp->TimeSlice = T*count; // 设置各级队列时间片，当前时间片T，2T，4T，8T...
+			count*=2;
+		}
 		temp->length = 10;				 // 限制队列过长，以免出现饥饿问题
 		temp->next = NULL;
 		if (head == NULL)
@@ -64,18 +138,22 @@ void InitQueue()
 void InitProcess()
 {
 	int num;
-	printf("\n进程总数：");
+	yellow_printf("Number of processes:\n");
 	scanf("%d", &num);
-	if (num > 10)
+	while (num > 10)
 	{
-		printf("超过队列长度！");
-		exit(1);
+		red_printf("Exceed the queue length!\n");
+		red_printf("Please re-energize ...\n");
+		scanf("%d",&num);
+		// exit(1);
 	}
 	Process *temp;
+	printf("\n");
 	for (int i = 0; i < num; i++)
 	{
 		temp = (Process *)malloc(sizeof(Process));
-		printf("第 %d 个进程的到达时间及运行时间：", i + 1);
+		printf("---------------------------------------\n");
+		yellow_printf("Arrival and run time of the %d process:\n", i + 1);
 		scanf("%d %d", &temp->ArrivalTime, &temp->WorkTime);
 		temp->flag = 0;
 		temp->next = NULL;
@@ -128,7 +206,7 @@ void RunFirstProcess(Queue *Q)
 		time += Q->front->WorkTime;
 		Q->front->WorkTime = 0;
 		Q->front->flag = 1;
-		printf("t=%2d 时刻：第%2d 个进程运行结束\n", time, Q->front->number);
+		blue_printf("Time=%2d : The %2d process is over\n", time, Q->front->number);
 		Process *temp, *temp2;
 		temp = Finish;
 		temp2 = Q->front->next;
@@ -258,7 +336,7 @@ void MLFQ()
 			// 判断是否所有进程都运行完毕
 			if (j==Maxsize+1)
 			{
-				printf("\n所有进程运行完毕");
+				green_printf("\nAll processes have finished running");
 				break;
 			}
 			else
@@ -279,7 +357,9 @@ int main()
 	InitProcess();
 	// 排序，实现抢占
 	SortProcess();
-	printf("\n运行结果如下:\n");
+	yellow_printf("\nRun!!!\n");
+	printf("The result is as follows:\n");
 	MLFQ();
-	return 0;
+	yellow_printf("Good day!\n");
+	exit(0);
 }

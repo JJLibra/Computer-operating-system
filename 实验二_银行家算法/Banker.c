@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stdarg.h>
 
 int processNum = 5;  // 记录进程个数
 int resourceNum = 3; // 记录资源类型个数
@@ -16,14 +17,99 @@ int request[20];             // 申请的资源情况
 int WorkStatus[20];          // 用于检查安全性的工作矩阵
 bool Finished[20] = {false}; // 用于记录进程的完成情况
 int Safety[20];              // 安全序列
+int AllocationStatus[20];    // 试分配前Allocation的状态
+int NeedStatus[20];          // 试分配前Need状态
+int AvailableStatus[20];     // 试分配前Available状态
+
+//输出颜色字体
+void color_printf(const char* color_code, const char* format, ...) {
+    va_list args;
+    printf("%s", color_code); // 设置颜色
+    va_start(args, format);
+    vprintf(format, args); // 打印格式化的文本
+    va_end(args);
+    printf("\033[0m"); // 重置到默认颜色
+}
+void red_printf(const char* format, ...) {
+    va_list args;
+    printf("\033[31m");
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    printf("\033[0m");
+}
+void blue_printf(const char* format, ...)
+{
+    va_list args;
+    printf("\033[1;34m");
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    printf("\033[0m");
+}
+void green_printf(const char* format, ...) 
+{
+    va_list args;
+    printf("\033[32m");
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    printf("\033[0m");
+}
+void darkgreen_printf(const char* format, ...) 
+{
+    va_list args;
+    printf("\033[36m");
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    printf("\033[0m");
+}
+void yellow_printf(const char* format, ...) 
+{
+    va_list args;
+    printf("\033[33m");
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    printf("\033[0m");
+}
+void purple_printf(const char* format, ...) 
+{
+    va_list args;
+    printf("\033[35m");
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    printf("\033[0m");
+}
 
 // 获取最大需求矩阵 Max
 void getMax()
 {
-    printf("请输入最大需求矩阵 Max：\n");
+    yellow_printf("Welcome!\n");
+    printf("Please enter the number of processes and the number of resource classes:\n");
+    while (1)
+    {
+        scanf("%d %d", &processNum, &resourceNum);
+        // 针对本次实验的参数要求验证
+        if (processNum < 5)
+        {
+            red_printf("\nIf the number of processes is at least 5, enter them again.\n");
+            continue;
+        }
+        if (resourceNum < 3)
+        {
+            red_printf("\nThe resource category is at least 3, please re-enter it.\n");
+            continue;
+        }
+        break;
+    }
+    printf("\n-----------------------------------\n");
+    yellow_printf("Please enter the Max matrix:\n");
     for (int i = 0; i < processNum; i++)
     {
-        printf("%2d号进程：\n", i + 1);
+        printf("%2d process:\n", i + 1);
         for (int j = 0; j < resourceNum; j++)
         {
             // int maxij=0;
@@ -36,10 +122,11 @@ void getMax()
 // 获取已分配资源
 void getAllocation()
 {
-    printf("请输入已分配资源矩阵 Allocation：\n");
+    printf("-----------------------------------\n");
+    yellow_printf("Please enter the Allocation matrix:\n");
     for (int i = 0; i < processNum; i++)
     {
-        printf("%d号进程已分配：\n", i + 1);
+        printf("%d process assigned:\n", i + 1);
         for (int j = 0; j < resourceNum; j++)
         {
             // int maxij=0;
@@ -59,46 +146,54 @@ void getNeed()
             Need[i][j] = Max[i][j] - Allocation[i][j];
         }
     }
-    printf("Need矩阵计算完毕\n");
+    green_printf("\nThe Need matrix is calculated\n");
 }
 
 void getAvailable()
 {
-    printf("请输入可分配资源矩阵：\n");
+    printf("-----------------------------------\n");
+    yellow_printf("Enter the Available matrix:\n");
     for (int i = 0; i < resourceNum; i++)
     {
         scanf("%d", &Available[i]);
     }
-    printf("\n");
+    green_printf("\nGot it!\n");
 }
-
 // 接收资源请求
 void getRequirement()
 {
-    printf("请输入申请请求的进程号：");
+    printf("-----------------------------------\n");
+    yellow_printf("Enter the request process number:");
     // int pnum=0;
     scanf("%d", &requireNum);
+    while(requireNum>processNum)
+    {
+        red_printf("\nOps!This process does not exist!\nPlease re-enter it:");
+        scanf("%d",&requireNum);
+    }
     Safety[0] = requireNum;
     for (int i = 0; i < resourceNum; i++)
     {
-        printf("%d类资源需要：\n", i + 1);
+        printf("The %d class resource requires:\n", i + 1);
         // int num=0;
         scanf("%d", &request[i]);
         if (request[i] > Need[requireNum - 1][i])
         {
-            printf("\n出错了，申请资源数超过当前所需！重新申请。\n");
+            red_printf("\nError\nThe number of resources requested is more than the current need!\nDon't be too greedy!\n");
             getRequirement();
         }
         if (request[i] > Available[i])
         {
-            printf("进程%d已被阻塞", requireNum);
+            red_printf("\nProcess %d is blocked\n", requireNum);
+            getRequirement();
         }
         else
         {
-            // 拷贝到工作矩阵，方便后面恢复状态
-            // WorkStatus[i]=Available[i];
-            // 试分配给进程requireNum资源
-            // WorkStatus[i] -= request[i];
+            // 保留现场
+            AvailableStatus[i]=Available[i];
+            AllocationStatus[i]=Allocation[requireNum-1][i];
+            NeedStatus[i]=Need[requireNum-1][i]; 
+            // 试分配
             Available[i] -= request[i];
             Allocation[requireNum - 1][i] += request[i];
             Need[requireNum - 1][i] -= request[i];
@@ -168,26 +263,58 @@ bool is_safe() // 安全性判断
     return true;
 }
 
+void showResource()
+{
+    printf("-------------------------------------------\n");
+    red_printf("Current resource situation\n");
+    yellow_printf("process      Max      Allocation     Need\n          ");
+    for(int i=0;i<3;i++)
+    {
+        for(int j=0;j<resourceNum;j++)
+        {
+            yellow_printf("r%d ",j+1);
+        }
+        printf("    ");
+    }
+    printf("\n");
+    for(int i=0;i<processNum;i++)
+    {
+        yellow_printf("P%d       ",i+1);
+        for(int j=0;j<resourceNum;j++)
+        {
+            printf("%2d ",Max[i][j]);
+        }
+        printf("    ");
+        for(int j=0;j<resourceNum;j++)
+        {
+            printf("%2d ",Allocation[i][j]);
+        }
+        printf("    ");
+        for(int j=0;j<resourceNum;j++)
+        {
+            printf("%2d ",Need[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+void showAvailable()
+{
+    yellow_printf("\nAvailable\n");
+    for(int i=0;i<resourceNum;i++)
+    {
+        yellow_printf("r%d ",i+1);
+    }
+    printf("\n");
+    for(int i=0;i<resourceNum;i++)
+    {
+        printf("%2d ",Available[i]);
+    }
+    printf("\n");
+}
+
 int main()
 {
-    // 初始化
-    printf("请输入进程总数和资源类的个数：\n");
-    while (1)
-    {
-        scanf("%d %d", &processNum, &resourceNum);
-        // 针对本次实验的参数要求验证
-        if (processNum < 5)
-        {
-            printf("进程个数至少为5，请重新输入\n");
-            continue;
-        }
-        if (resourceNum < 3)
-        {
-            printf("资源类别至少为3，请重新输入\n");
-            continue;
-        }
-        break;
-    }
     // 获取最大需求矩阵 Max
     getMax();
     // 获取分配矩阵 Allocation
@@ -197,29 +324,45 @@ int main()
     // 获取当前可用资源
     getAvailable();
     // 申请前检查一次
-    // if (!VerifySafety())
     if(!is_safe())
     {
-        printf("当前系统不安全，暂时无法申请资源！");
+        red_printf("The current system is not secure!\nResources could not be allocated.\n");
+        exit(0);
     }
     else
     {
-        // 获取请求信息
-        getRequirement();
-        // 检查分配后的安全性
-        // if (!VerifySafety())
-        if(!is_safe())
+        green_printf("The system is secure.\n");
+        while (1)
         {
-            printf("分配后系统不安全，不予分配，已恢复原状态！");
-        }
-        else
-        {
-            printf("申请有效，给予资源分配");
-            printf("\n一个可行的安全序列为：\n");
-            for (int i = 0; i < processNum; i++)
+            // 获取请求信息
+            getRequirement();
+            // 检查分配后的安全性
+            if(!is_safe())
             {
-                printf("%d ", Safety[i]);
+                red_printf("After allocation, the system is not secure.\nIt has been restored to its original state!\n");
+                // 恢复试分配前状态
+                for (int i = 0; i < resourceNum; i++)
+                {
+                    Allocation[requireNum-1][i]=AllocationStatus[i];
+                    Need[requireNum-1][i]=NeedStatus[i];
+                    Available[i]=AvailableStatus[i];
+                }
+                continue;
             }
+            else
+            {
+                green_printf("\nThe request was successful.");
+                blue_printf("\nA possible safety sequence would be:\n");
+                for (int i = 0; i < processNum-1; i++)
+                {
+                    blue_printf("%d->", Safety[i]);
+                }
+                blue_printf("%d\n",Safety[processNum-1]);
+                // 输出当前资源情况
+                showResource();
+                showAvailable();
+            }
+            // getchar();
         }
     }
     return 0;

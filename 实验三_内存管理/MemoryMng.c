@@ -83,7 +83,8 @@ void purple_printf(const char* format, ...)
 }
 void InitProcess() //初始化进程
 {
-	int num,RandomNumber;
+	int num,RandomNumber,size;
+	// int alpha=1;
 	printf("Please enter the number of processes:\n"); 
 	scanf("%d",&num);
     if(num<5)
@@ -92,6 +93,19 @@ void InitProcess() //初始化进程
         // num=0;
         scanf("%d",&num);
     }
+	// yellow_printf("Set the process size unit:\n1.B\n2.KB\n3.MB\n");
+	// scanf("%d",&size);
+	// switch (size)
+	// {
+	// case 2:
+	// 	alpha=1024;
+	// 	break;
+	// case 3:
+	// 	alpha=1024*1024;
+	// 	break;
+	// default:
+	// 	break;
+	// }
 	Process *temp;
 	for(int i=0;i<num;i++)
 	{
@@ -180,6 +194,112 @@ void InitProcess() //初始化进程
 		}
 	}
 }
+
+void add()
+{
+	int RandomNumber;
+	Process *temp;
+	temp = (Process*)malloc(sizeof(Process));
+	// printf("----------------------------------------------------------------------\n");
+	printf("Enter the sequence number and size of the process:\n");
+	scanf("%d %d",&temp->ID,&temp->Size);
+
+	Process *check;
+	check=head;
+	while (check != NULL)
+	{
+		if(temp->ID==check->ID)
+		{
+			red_printf("The process already exists, please re-enter it:\n");
+			scanf("%d %d",&temp->ID,&temp->Size);
+			if(temp->ID!=check->ID) break;
+			else continue;
+		}
+		check=check->next;
+	}
+	
+	//计算进程所需的页数
+	if(temp->Size%SIZE==0) //能整除
+	{
+		temp->Pages = temp->Size/SIZE; 
+	}
+	else //不足一页的部分另起一页
+	{
+		temp->Pages = temp->Size/SIZE+1;
+	}
+	temp->next = NULL;
+	//空块管理 
+	if(temp->Pages<BlankBlockNum)
+	{
+		BlankBlockNum -=temp->Pages;
+	}
+	else
+	{
+		red_printf("Sorry,there is not enough memory space to allocate!\n"); 
+	}
+	//分配内存 
+	for(int j=0;j<temp->Pages;j++)
+	{
+		srand(time(0)); //随机数种子
+		while(1)
+		{
+			//模拟实际内存分配不连续性（随机分配）
+			RandomNumber = rand()%32768;
+			if(BLOCK[RandomNumber]==0)
+			{
+				temp->Page[j] = RandomNumber;
+				BLOCK[RandomNumber] = 1;
+				break;
+			}
+			else
+			{
+				continue;
+			}
+		}
+	} 
+	green_printf("Process %d memory allocation succeeded!\n",temp->ID);
+	printf("The page table is as follows:\n");
+	blue_printf("Page PhyBlock\n"); 
+	for(int j=0;j<temp->Pages;j++)
+	{
+		blue_printf(" %d   %d\n",j,temp->Page[j]);
+	}
+	//放入进程链表 
+	if(head == NULL)
+	{
+		head = temp;
+		temp = NULL;
+	}
+	else
+	{
+		Process *temp2;
+		temp2 = head;
+		while(temp2->next != NULL)
+		{
+			temp2 = temp2->next;
+		}
+		temp2->next = temp;
+		temp = NULL;
+	}
+}
+
+void showMemory()
+{
+	Process *Memorytemp;
+	Memorytemp = head;
+	green_printf("The current process memory allocation is as follows:\n");
+	while(Memorytemp != NULL)
+	{
+		yellow_printf("Process %d\n",Memorytemp->ID);
+		blue_printf("Page PhyBlock\n"); 
+		for(int j=0;j<Memorytemp->Pages;j++)
+		{
+			blue_printf(" %d   %d\n",j,Memorytemp->Page[j]);
+		}
+		Memorytemp = Memorytemp->next;
+	}
+}
+
 void Release(int id)
 {
 	Process *temp,*temp1,*temp2;
@@ -220,17 +340,13 @@ void Release(int id)
 			}
 		}
 	}
-	temp2 = head;
-	printf("The current process memory allocation is as follows:\n");
-	while(temp2 != NULL)
+	if(temp1==NULL)
 	{
-		yellow_printf("Process %d\n",temp2->ID);
-		blue_printf("Page PhyBlock\n"); 
-		for(int j=0;j<temp2->Pages;j++)
-		{
-			blue_printf(" %d   %d\n",j,temp2->Page[j]);
-		}
-		temp2 = temp2->next;
+		red_printf("The process does not exist!\n");
+	}
+	else
+	{
+		showMemory();
 	}
 } 
 void AddressTranslation(int id,int LogAddress)
@@ -287,31 +403,35 @@ int main()
 {
 	yellow_printf("Welcome!\n");
 	InitProcess(); //初始化进程并分配内存
-	//Manage();
+	green_printf("\nGot it!\n");
 	int n,id,LogAddress;
 	while(1)
 	{
 		printf("----------------------------------------------------------------------\n");
-		printf("Please enter the sequence number of the operation you want to perform:\n1.Free up memory\n2.View physical address\n3.View free blocks\n4.Exit\n");
+		printf("Please enter the sequence number of the operation you want to perform:\n1.Free up memory\n2.Allocate memory\n3.View physical address\n4.View free blocks\n5.View memory allocation\n6.Exit\n");
 		scanf("%d",&n);
 		switch(n)
 		{
 			case 1:
-				//printf("----------------------------------------------------------------------\n");
 				printf("Please enter the ID of the process you want to release:\n");
 				scanf("%d",&id);
 				Release(id);
 				break;
 			case 2:
-				//printf("----------------------------------------------------------------------\n");
+				add();
+				break;
+			case 3:
 				printf("Enter the process ID and logical address:\n");
 				scanf("%d %d",&id,&LogAddress);
 				AddressTranslation(id,LogAddress);
 				break;
-			case 3:
+			case 4:
 				showBlocks();
 				break;
-			case 4:
+			case 5:
+				showMemory();
+				break;
+			case 6:
 				yellow_printf("Have a nice day!\n");
 				exit(0);
 				break;
